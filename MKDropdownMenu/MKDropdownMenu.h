@@ -169,7 +169,8 @@ NS_ASSUME_NONNULL_BEGIN
 @optional
 
 /// Return the desired dimensions of menu items.
-- (CGFloat)dropdownMenu:(MKDropdownMenu *)dropdownMenu widthForComponent:(NSInteger)component;
+- (CGFloat)dropdownMenu:(MKDropdownMenu *)dropdownMenu widthForComponentItems:(NSInteger)component;
+- (CGFloat)dropdownMenu:(MKDropdownMenu *)dropdownMenu widthForComponentTitle:(NSInteger)component;
 - (CGFloat)dropdownMenu:(MKDropdownMenu *)dropdownMenu rowHeightForComponent:(NSInteger)component;
 
 /// Return YES if the dropdown for this component should occupy the full width of the menu, otherwise its width will be equal to its header component's width. If `useFullScreenWidth = YES`, the width of the dropdown for the specified component will be equal to screen width minus `fullScreenInsetLeft` and `fullScreenInsetRight`. Default = YES.

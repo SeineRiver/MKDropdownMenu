@@ -862,7 +862,7 @@ static const CGFloat kScrollViewBottomSpace = 5;
     return self;
 }
 
-- (void)presentDropdownInContainerView:(UIView *)containerView animated:(BOOL)animated completion:(void (^)())completion {
+- (void)presentDropdownInContainerView:(UIView *)containerView animated:(BOOL)animated completion:(void (^)(void))completion {
     
     self.containerView = containerView;
     
@@ -875,7 +875,7 @@ static const CGFloat kScrollViewBottomSpace = 5;
     
     // Adjust scrollView + height
     CGFloat height = CGRectGetHeight(containerView.bounds);
-    void (^scrollViewAdjustBlock)() = ^{};
+    void (^scrollViewAdjustBlock)(void) = ^{};
     
     if ([containerView isKindOfClass:[UIScrollView class]]) {
         UIScrollView *scrollView = (UIScrollView *)containerView;
@@ -900,13 +900,13 @@ static const CGFloat kScrollViewBottomSpace = 5;
         }
         
         scrollViewAdjustBlock = ^{
-            if (_menu.adjustsContentInset && inset > 0) {
-                _previousScrollViewBottomInset = scrollView.contentInset.bottom;
+            if (self->_menu.adjustsContentInset && inset > 0) {
+                self->_previousScrollViewBottomInset = scrollView.contentInset.bottom;
                 UIEdgeInsets contentInset = scrollView.contentInset;
                 contentInset.bottom += inset;
                 scrollView.contentInset = contentInset;
             }
-            if (_menu.adjustsContentOffset
+            if (self->_menu.adjustsContentOffset
                 && (self.controller.showAbove ? offset < scrollView.contentOffset.y : scrollView.contentOffset.y < offset)) {
                 scrollView.contentOffset = CGPointMake(scrollView.contentOffset.x, offset);
             }
@@ -955,28 +955,28 @@ static const CGFloat kScrollViewBottomSpace = 5;
                      }
                      completion:^(BOOL finished) {
                          [self.controller endAppearanceTransition];
-                         _isAnimating = NO;
+                         self->_isAnimating = NO;
                          if (completion) {
                              completion();
                          }
                      }];}
 
-- (void)dismissDropdownAnimated:(BOOL)animated completion:(void (^)())completion {
+- (void)dismissDropdownAnimated:(BOOL)animated completion:(void (^)(void))completion {
     
     [self.controller beginAppearanceTransition:NO animated:animated];
     
-    void (^scrollViewResetBlock)() = ^{};
+    void (^scrollViewResetBlock)(void) = ^{};
     
     if ([self.containerView isKindOfClass:[UIScrollView class]]) {
         UIScrollView *scrollView = (UIScrollView *)self.containerView;
         scrollViewResetBlock = ^{
-            if (_previousScrollViewBottomInset != CGFLOAT_MAX) {
+            if (self->_previousScrollViewBottomInset != CGFLOAT_MAX) {
                 UIEdgeInsets contentInset = scrollView.contentInset;
-                contentInset.bottom = _previousScrollViewBottomInset;
+                contentInset.bottom = self->_previousScrollViewBottomInset;
                 scrollView.contentInset = contentInset;
-                _previousScrollViewBottomInset = CGFLOAT_MAX;
+                self->_previousScrollViewBottomInset = CGFLOAT_MAX;
             }
-            if (_menu.adjustsContentOffset && scrollView.contentOffset.y < 0) {
+            if (self->_menu.adjustsContentOffset && scrollView.contentOffset.y < 0) {
                 scrollView.contentOffset = CGPointMake(scrollView.contentOffset.x, 0);
             }
         };
@@ -1013,7 +1013,7 @@ static const CGFloat kScrollViewBottomSpace = 5;
                          self.controller.view.alpha = 1.0;
                          self.controller.containerView.transform = CGAffineTransformIdentity;
                          [self.controller endAppearanceTransition];
-                         _isAnimating = NO;
+                         self->_isAnimating = NO;
                          if (completion) {
                              completion();
                          }
@@ -1242,9 +1242,9 @@ static const CGFloat kScrollViewBottomSpace = 5;
     
     NSMutableArray *widths = [NSMutableArray new];
     
-    if ([self.delegate respondsToSelector:@selector(dropdownMenu:widthForComponent:)]) {
+    if ([self.delegate respondsToSelector:@selector(dropdownMenu:widthForComponentTitle:)]) {
         for (NSInteger i = 0; i < self.buttons.count; i++) {
-            CGFloat width = [self.delegate dropdownMenu:self widthForComponent:i];
+            CGFloat width = [self.delegate dropdownMenu:self widthForComponentTitle:i];
             [widths addObject:@(width)];
             if (width > 0) {
                 totalCustomWidth += width;
@@ -1536,7 +1536,7 @@ static const CGFloat kScrollViewBottomSpace = 5;
     
     NSInteger previousComponent = self.selectedComponent;
     
-    void (^presentation)() = ^{
+    void (^presentation)(void) = ^{
         self.selectedComponent = component;
         [self presentDropdownForSelectedComponentAnimated:animated completion:nil];
         if (component != NSNotFound && [self.delegate respondsToSelector:@selector(dropdownMenu:didOpenComponent:)]) {
@@ -1611,6 +1611,27 @@ static const CGFloat kScrollViewBottomSpace = 5;
         CGRect buttonFrame = [presentingView convertRect:self.buttons[self.selectedComponent].frame fromView:self];
         left = CGRectGetMinX(buttonFrame);
         right = CGRectGetMaxX(buttonFrame);
+        
+        if ([self.delegate respondsToSelector:@selector(dropdownMenu:widthForComponentItems:)]) {
+            CGFloat width = [self.delegate dropdownMenu:self widthForComponentItems:self.selectedComponent];
+            if (width > 0) {
+                left -= (width - (right - left)) / 2;
+                
+                CGFloat minLeft = CGRectGetMinX(presentingView.bounds) + self.fullScreenInsetLeft;
+                CGFloat maxRight = CGRectGetMaxX(presentingView.bounds) - self.fullScreenInsetRight;
+                
+                if (left < minLeft) {
+                    left = minLeft;
+                    right = left + width;
+                } else {
+                    right = left + width;
+                    if (right > maxRight) {
+                        right = maxRight;
+                        left = right - width;
+                    }
+                }
+            }
+        }
     }
     
     return UIEdgeInsetsMake(0, left, 0, CGRectGetWidth(presentingView.bounds) - right + 0.5);
@@ -1625,7 +1646,7 @@ static const CGFloat kScrollViewBottomSpace = 5;
 }
 
 - (void)updateComponentButtonsSelection:(BOOL)selected {
-    void (^animation)() = ^{
+    void (^animation)(void) = ^{
         if (selected && self.selectedComponent != NSNotFound) {
             [self.buttons[self.selectedComponent] setSelected:YES];
         } else {
@@ -1652,7 +1673,7 @@ static const CGFloat kScrollViewBottomSpace = 5;
     return self.presentingView ?: self.window;
 }
 
-- (void)presentDropdownForSelectedComponentAnimated:(BOOL)animated completion:(void (^)())completion {
+- (void)presentDropdownForSelectedComponentAnimated:(BOOL)animated completion:(void (^)(void))completion {
     if (self.selectedComponent == NSNotFound) {
         if (completion) {
             completion();
@@ -1685,7 +1706,7 @@ static const CGFloat kScrollViewBottomSpace = 5;
     [self updateComponentButtonsSelection:YES];
 }
 
-- (void)dismissDropdownAnimated:(BOOL)animated completion:(void (^)())completion {
+- (void)dismissDropdownAnimated:(BOOL)animated completion:(void (^)(void))completion {
     if (self.contentViewController.view.window == nil) {
         if (completion) {
             completion();
